@@ -1,3 +1,5 @@
+First pure C++ version HPL code with CMake supports
+
 $sudo apt-get update
 $sudo apt-get install -y libopenblas-dev
 
