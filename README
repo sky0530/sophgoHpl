@@ -1,0 +1,8 @@
+$sudo apt-get update
+$sudo apt-get install -y libopenblas-dev
+
+$cd tpl/blis
+$configure auto
+$make -j32
+$make check
+$make install 
