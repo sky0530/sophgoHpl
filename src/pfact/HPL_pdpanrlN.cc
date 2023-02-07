@@ -48,6 +48,7 @@
  * Include files
  */
 #include "hpl.h"
+#include "utility.h"
 
 #ifdef STDC_HEADERS
 void HPL_pdpanrlN
@@ -164,6 +165,7 @@ void HPL_pdpanrlN
  * Find local absolute value max in first column - initialize WORK[0:3]
  */
    HPL_dlocmax( PANEL, m, ii, jj, WORK );
+   Utility::fillAndPushDlocmax(PANEL, m, ii, jj, WORK);
 
    while( Nm1 >= 1 )
    {
@@ -172,17 +174,26 @@ void HPL_pdpanrlN
  * Swap and broadcast the current row
  */
       HPL_pdmxswp(  PANEL, m, ii, jj, WORK );
+      Utility::fillAndPushPdmxswp(PANEL, m, ii, jj, WORK);
+
       HPL_dlocswpN( PANEL,    ii, jj, WORK );
+      Utility::fillAndPushDlocswpN(PANEL, ii, jj, WORK);
 /*
  * Scale current column by its absolute value max entry  -  Update trai-
  * ling sub-matrix and find local absolute value max in next column (On-
  * ly one pass through cache for each current column).  This sequence of
  * operations could benefit from a specialized blocked implementation.
  */
-      if( WORK[0] != HPL_rzero )
+      if( WORK[0] != HPL_rzero ) {
          HPL_dscal( Mm1, HPL_rone / WORK[0], Acur, 1 );
+         Utility::fillAndPushDscal(Mm1, HPL_rone / WORK[0], Acur);
+      }
       HPL_daxpy( Mm1, -WORK[4+jj+1], Acur, 1, Anxt, 1 );
+      Utility::fillAndPushDaxpy(Mm1, WORK[4+jj+1], Acur, Anxt);
+
       HPL_dlocmax( PANEL, Mm1, iip1, jj+1, WORK );
+      Utility::fillAndPushDlocmax(PANEL, Mm1, iip1, jj+1, WORK);
+
 #ifdef HPL_CALL_VSIPL
       if( Nm1 > 1 )
       {
@@ -205,9 +216,11 @@ void HPL_pdpanrlN
          (void) vsip_mdestroy_d( Av1 );
       }
 #else
-      if( Nm1 > 1 )
+      if( Nm1 > 1 ) {
          HPL_dger( CblasColMajor, Mm1, Nm1-1, -HPL_rone, Acur, 1,
                    WORK+4+jj+2, 1, Mptr( Anxt, 0, 1, lda ), lda );
+         Utility::fillAndPushDger(Mm1, Nm1-1, Acur, WORK+4+jj+2, Mptr( Anxt, 0, 1, lda ), lda);
+      }
 #endif
 /*
  * Same thing as above but with worse data access on y (A += x * y^T)
@@ -226,9 +239,15 @@ void HPL_pdpanrlN
  * max entry
  */ 
    HPL_pdmxswp(  PANEL, m, ii, jj, WORK );
+   Utility::fillAndPushPdmxswp(PANEL, m, ii, jj, WORK);
+
    HPL_dlocswpN( PANEL,    ii, jj, WORK );
-   if( WORK[0] != HPL_rzero )
+   Utility::fillAndPushDlocswpN(PANEL, ii, jj, WORK);
+
+   if( WORK[0] != HPL_rzero ) {
       HPL_dscal( Mm1, HPL_rone / WORK[0], Mptr( A, iip1, jj, lda ), 1 );
+      Utility::fillAndPushDscal(Mm1, HPL_rone / WORK[0], Mptr( A, iip1, jj, lda ));
+   }
 #ifdef HPL_CALL_VSIPL
 /*
  * Release the blocks

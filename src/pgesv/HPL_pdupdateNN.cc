@@ -48,6 +48,7 @@
  * Include files
  */
 #include "hpl.h"
+#include "utility.h"
 
 #ifdef STDC_HEADERS
 void HPL_pdupdateNN
@@ -125,7 +126,10 @@ void HPL_pdupdateNN
    {
       if( PBCST != NULL )
       {
-         do { (void) HPL_bcast( PBCST, IFLAG ); }
+         do {
+            (void) HPL_bcast( PBCST, IFLAG );
+            Utility::fillAndPushBcast(PBCST);
+         }
          while( *IFLAG != HPL_SUCCESS );
       }
 #ifdef HPL_DETAILED_TIMING
@@ -137,6 +141,7 @@ void HPL_pdupdateNN
  * Enable/disable the column panel probing mechanism
  */
    (void) HPL_bcast( PBCST, &test );
+   Utility::fillAndPushBcast(PBCST);
 /*
  * 1 x Q case
  */
@@ -179,9 +184,11 @@ void HPL_pdupdateNN
          HPL_ptimer( HPL_TIMING_LASWP );
 #else
          HPL_dlaswp00N( jb, nn, Aptr, lda, ipiv );
+         Utility::fillAndPushDlaswp00N( jb, nn, Aptr, lda, ipiv );
 #endif
          HPL_dtrsm( CblasColMajor, CblasLeft, CblasLower, CblasNoTrans,
                     CblasUnit, jb, nn, HPL_rone, L1ptr, jb, Aptr, lda );
+         Utility::fillAndPushDtrsm(jb, nn, L1ptr, Aptr, lda);
 #ifdef HPL_CALL_VSIPL
 /*
  * Create the matrix subviews
@@ -200,10 +207,12 @@ void HPL_pdupdateNN
          HPL_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans, mp, nn,
                     jb, -HPL_rone, L2ptr, ldl2, Aptr, lda, HPL_rone,
                     Mptr( Aptr, jb, 0, lda ), lda );
+         Utility::fillAndPushDgemm(mp, nn, jb, L2ptr, ldl2, Aptr, lda, Mptr( Aptr, jb, 0, lda ));
 #endif
          Aptr = Mptr( Aptr, 0, nn, lda ); nq0 += nn; 
 
-         (void) HPL_bcast( PBCST, &test ); 
+         (void) HPL_bcast( PBCST, &test );
+         Utility::fillAndPushBcast(PBCST);
       }
 /*
  * The panel has been forwarded at that point, finish the update
@@ -216,9 +225,11 @@ void HPL_pdupdateNN
          HPL_ptimer( HPL_TIMING_LASWP );
 #else
          HPL_dlaswp00N( jb, nn, Aptr, lda, ipiv );
+         Utility::fillAndPushDlaswp00N( jb, nn, Aptr, lda, ipiv );
 #endif
          HPL_dtrsm( CblasColMajor, CblasLeft, CblasLower, CblasNoTrans,
                     CblasUnit, jb, nn, HPL_rone, L1ptr, jb, Aptr, lda );
+         Utility::fillAndPushDtrsm(jb, nn, L1ptr, Aptr, lda);
 #ifdef HPL_CALL_VSIPL
 /*
  * Create the matrix subviews
@@ -237,6 +248,7 @@ void HPL_pdupdateNN
          HPL_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans, mp, nn,
                     jb, -HPL_rone, L2ptr, ldl2, Aptr, lda, HPL_rone,
                     Mptr( Aptr, jb, 0, lda ), lda );
+         Utility::fillAndPushDgemm(mp, nn, jb, L2ptr, ldl2, Aptr, lda, Mptr( Aptr, jb, 0, lda ));
 #endif
       }
 #ifdef HPL_CALL_VSIPL
@@ -266,9 +278,9 @@ void HPL_pdupdateNN
 
       if( (   fswap == HPL_SWAP01 ) ||
           ( ( fswap == HPL_SW_MIX ) && ( n > tswap ) ) )
-      { HPL_pdlaswp01N( PBCST, &test, PANEL, n ); }
+      { HPL_pdlaswp01N( PBCST, &test, PANEL, n ); Utility::fillAndPushNone();}
       else
-      { HPL_pdlaswp00N( PBCST, &test, PANEL, n ); }
+      { HPL_pdlaswp00N( PBCST, &test, PANEL, n ); Utility::fillAndPushNone();}
 /*
  * Compute redundantly row block of U and update trailing submatrix
  */
@@ -303,6 +315,7 @@ void HPL_pdupdateNN
 
          HPL_dtrsm( CblasColMajor, CblasLeft,  CblasLower, CblasNoTrans,
                     CblasUnit, jb, nn, HPL_rone, L1ptr, jb, Uptr, LDU );
+         Utility::fillAndPushDtrsm(jb, nn, L1ptr, Aptr, lda);
          if( curr != 0 )
          {
 #ifdef HPL_CALL_VSIPL
@@ -323,8 +336,10 @@ void HPL_pdupdateNN
             HPL_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans, mp, nn,
                        jb, -HPL_rone, L2ptr, ldl2, Uptr, LDU, HPL_rone,
                        Mptr( Aptr, jb, 0, lda ), lda );
+            Utility::fillAndPushDgemm(mp, nn, jb, L2ptr, ldl2, Aptr, lda, Mptr( Aptr, jb, 0, lda ));
 #endif
             HPL_dlacpy( jb, nn, Uptr, LDU, Aptr, lda );
+            Utility::fillAndPushNone();
          }
          else
          {
@@ -346,12 +361,14 @@ void HPL_pdupdateNN
             HPL_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans, mp, nn,
                        jb, -HPL_rone, L2ptr, ldl2, Uptr, LDU, HPL_rone,
                        Aptr, lda );
+            Utility::fillAndPushDgemm(mp, nn, jb, L2ptr, ldl2, Uptr, lda, Aptr);
 #endif
          }
          Uptr = Mptr( Uptr, 0, nn, LDU );
          Aptr = Mptr( Aptr, 0, nn, lda ); nq0 += nn;
 
-         (void) HPL_bcast( PBCST, &test ); 
+         (void) HPL_bcast( PBCST, &test );
+         Utility::fillAndPushBcast(PBCST);
       }
 /*
  * The panel has been forwarded at that point, finish the update
@@ -360,7 +377,7 @@ void HPL_pdupdateNN
       {
          HPL_dtrsm( CblasColMajor, CblasLeft,  CblasLower, CblasNoTrans,
                     CblasUnit, jb, nn, HPL_rone, L1ptr, jb, Uptr, LDU );
-
+         Utility::fillAndPushDtrsm(jb, nn, L1ptr, Aptr, lda);
          if( curr != 0 )
          {
 #ifdef HPL_CALL_VSIPL
@@ -381,8 +398,10 @@ void HPL_pdupdateNN
             HPL_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans, mp, nn,
                        jb, -HPL_rone, L2ptr, ldl2, Uptr, LDU, HPL_rone,
                        Mptr( Aptr, jb, 0, lda ), lda );
+            Utility::fillAndPushDgemm(mp, nn, jb, L2ptr, ldl2, Uptr, lda, Mptr( Aptr, jb, 0, lda ));
 #endif
             HPL_dlacpy( jb, nn, Uptr, LDU, Aptr, lda );
+            Utility::fillAndPushNone();
          }
          else
          {
@@ -404,6 +423,7 @@ void HPL_pdupdateNN
             HPL_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans, mp, nn,
                        jb, -HPL_rone, L2ptr, ldl2, Uptr, LDU, HPL_rone,
                        Aptr, lda );
+            Utility::fillAndPushDgemm(mp, nn, jb, L2ptr, ldl2, Uptr, lda, Aptr);
 #endif
          }
       }
