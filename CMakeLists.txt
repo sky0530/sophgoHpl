@@ -11,7 +11,7 @@ option(HPL_MPI_DIR  "Path to MPI library" ${CMAKE_CURRENT_SOURCE_DIR}/tpl/openmp
 include(cmake/Dependencies.cmake)
 
 # Build flags
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -73,3 +73,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE BLAS::BLAS)
 set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 
 target_link_options(${PROJECT_NAME} PRIVATE "-fopenmp")
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/test/HPL.dat
+     DESTINATION ${CMAKE_BINARY_DIR})
