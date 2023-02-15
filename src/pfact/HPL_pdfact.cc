@@ -48,6 +48,7 @@
  * Include files
  */
 #include "hpl.h"
+#include "utility.h"
 
 #ifdef STDC_HEADERS
 void HPL_pdfact
@@ -111,6 +112,7 @@ void HPL_pdfact
 /* ..
  * .. Executable Statements ..
  */
+   Utility::fillAndPushEditPanelBeforePF(PANEL, jb);
    jb = PANEL->jb; PANEL->n -= jb; PANEL->ja += jb;
 
    if( ( PANEL->grid->mycol != PANEL->pcol ) || ( jb <= 0 ) ) return;
@@ -128,8 +130,10 @@ void HPL_pdfact
  */
    PANEL->algo->rffun( PANEL, PANEL->mp, jb, 0, (double *)HPL_PTR( vptr,
                        ((size_t)(align) * sizeof(double) ) ) );
-   if( vptr ) free( vptr );
 
+   // if( vptr ) free( vptr );
+
+   Utility::fillAndPushEditPanelAfterPF(PANEL, jb);
    PANEL->A   = Mptr( PANEL->A, 0, jb, PANEL->lda );
    PANEL->nq -= jb; PANEL->jj += jb;
 #ifdef HPL_DETAILED_TIMING

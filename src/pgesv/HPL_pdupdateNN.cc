@@ -142,6 +142,7 @@ void HPL_pdupdateNN
  */
    (void) HPL_bcast( PBCST, &test );
    Utility::fillAndPushBcast(PBCST);
+   // test = HPL_SUCCESS;
 /*
  * 1 x Q case
  */
@@ -167,6 +168,7 @@ void HPL_pdupdateNN
       Lv1 = vsip_msubview_d( Lv0, 0, 0, mp, jb );
 #endif
       for( i = 0; i < jb; i++ ) { ipiv[i] = (int)(dpiv[i]) - iroff; }
+      Utility::fillAndPushProcessIpiv(ipiv, dpiv, jb, iroff);
 /*
  * So far we have not updated anything -  test availability of the panel
  * to be forwarded - If detected forward it and finish the update in one
@@ -184,7 +186,7 @@ void HPL_pdupdateNN
          HPL_ptimer( HPL_TIMING_LASWP );
 #else
          HPL_dlaswp00N( jb, nn, Aptr, lda, ipiv );
-         Utility::fillAndPushDlaswp00N( jb, nn, Aptr, lda, ipiv );
+         Utility::fillAndPushDlaswp00N( jb, nn, Aptr, lda, ipiv);
 #endif
          HPL_dtrsm( CblasColMajor, CblasLeft, CblasLower, CblasNoTrans,
                     CblasUnit, jb, nn, HPL_rone, L1ptr, jb, Aptr, lda );
@@ -278,9 +280,15 @@ void HPL_pdupdateNN
 
       if( (   fswap == HPL_SWAP01 ) ||
           ( ( fswap == HPL_SW_MIX ) && ( n > tswap ) ) )
-      { HPL_pdlaswp01N( PBCST, &test, PANEL, n ); Utility::fillAndPushNone();}
+      {
+         HPL_pdlaswp01N( PBCST, &test, PANEL, n );
+         Utility::fillAndPushNone();
+      }
       else
-      { HPL_pdlaswp00N( PBCST, &test, PANEL, n ); Utility::fillAndPushNone();}
+      {
+         HPL_pdlaswp00N( PBCST, &test, PANEL, n );
+         Utility::fillAndPushNone();
+      }
 /*
  * Compute redundantly row block of U and update trailing submatrix
  */
@@ -447,6 +455,7 @@ void HPL_pdupdateNN
 #endif
    }
 
+   Utility::fillAndPushEditPanel(PANEL, Mptr( PANEL->A, 0, n, lda ), n);
    PANEL->A = Mptr( PANEL->A, 0, n, lda ); PANEL->nq -= n; PANEL->jj += n;
 /*
  * return the outcome of the probe  (should always be  HPL_SUCCESS,  the

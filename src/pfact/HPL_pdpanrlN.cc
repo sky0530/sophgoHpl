@@ -189,7 +189,7 @@ void HPL_pdpanrlN
          Utility::fillAndPushDscal(Mm1, HPL_rone / WORK[0], Acur);
       }
       HPL_daxpy( Mm1, -WORK[4+jj+1], Acur, 1, Anxt, 1 );
-      Utility::fillAndPushDaxpy(Mm1, WORK[4+jj+1], Acur, Anxt);
+      Utility::fillAndPushDaxpy(Mm1, -WORK[4+jj+1], Acur, Anxt);
 
       HPL_dlocmax( PANEL, Mm1, iip1, jj+1, WORK );
       Utility::fillAndPushDlocmax(PANEL, Mm1, iip1, jj+1, WORK);

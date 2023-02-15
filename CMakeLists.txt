@@ -26,11 +26,12 @@ file(GLOB_RECURSE sophgoHplDeviceSource RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "te
 
 list(APPEND CMAKE_HOST_FLAGS "")
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-  list(APPEND CMAKE_HOST_FLAGS "-O0;-g")
-else()
-  list(APPEND CMAKE_HOST_FLAGS "-O3;-march=native")
-endif()
+# if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+#   list(APPEND CMAKE_HOST_FLAGS "-O0;-g")
+# else()
+#   list(APPEND CMAKE_HOST_FLAGS "-O3;-march=native")
+# endif()
+list(APPEND CMAKE_HOST_FLAGS "-O0;-g")
 
 # add_library(hplSrc ${sophgoHplSource} ${sophgoHplInc} )
 # set_target_properties(hplSrc PROPERTIES LINKER_LANGUAGE CXX)

@@ -94,8 +94,8 @@ int HPL_pdpanel_free
       vsip_blockdestroy_d( PANEL->Ublock );
 #endif
 
-   if( PANEL->WORK  ) free( PANEL->WORK  );
-   if( PANEL->IWORK ) free( PANEL->IWORK );
+   // if( PANEL->WORK  ) free( PANEL->WORK  );
+   // if( PANEL->IWORK ) free( PANEL->IWORK );
 
    return( MPI_SUCCESS );
 /*

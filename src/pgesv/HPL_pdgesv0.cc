@@ -48,6 +48,7 @@
  * Include files
  */
 #include "hpl.h"
+#include "utility.h"
 
 #ifdef STDC_HEADERS
 void HPL_pdgesv0
@@ -120,6 +121,10 @@ void HPL_pdgesv0
 
    HPL_pdpanel_new( GRID, ALGO, N, N+1, Mmin( N, nb ), A, 0, 0, tag,
                     &panel[0] );
+
+   int sizeArrayA = (size_t)(A->ld+1) * (size_t)(A->nq)*sizeof( double );
+   double* backupA = (double*) malloc( sizeArrayA );
+   memcpy(backupA, A->A, sizeArrayA);
 /*
  * Loop over the columns of A
  */
@@ -139,28 +144,56 @@ void HPL_pdgesv0
  * Release panel resources - re-initialize panel data structure
  */
       (void) HPL_pdpanel_free( panel[0] );
+      Utility::fillAndPushPanelFree(panel[0]);
+
+
+      HPL_T_panel tmpPanel;
+      tmpPanel.grid = GRID;
+      tmpPanel.algo = ALGO;
+      tmpPanel.n = n;
+      tmpPanel.jb = jb;
+      tmpPanel.pmat = A;
+      tmpPanel.ja = j;
+      tmpPanel.jj = tag;
+      Utility::fillAndPushPanelInit(tmpPanel, panel[0]);
       HPL_pdpanel_init( GRID, ALGO, n, n+1, jb, A, j, j, tag, panel[0] );
 /*
  * Factor and broadcast current panel - update
  */
       HPL_pdfact(               panel[0] );
+
       (void) HPL_binit(         panel[0] );
+      Utility::fillAndPushBinit(panel[0]);
       do
-      { (void) HPL_bcast(       panel[0], &test ); }
+      {
+         (void) HPL_bcast(       panel[0], &test );
+         test = HPL_SUCCESS;
+         Utility::fillAndPushBcast(panel[0]);
+      }
       while( test != HPL_SUCCESS );
       (void) HPL_bwait(         panel[0] );
+      Utility::fillAndPushBwait(panel[0]);
       HPL_pdupdate( NULL, NULL, panel[0], -1 );
 /*
  * Update message id for next factorization
  */
       tag = MNxtMgid( tag, MSGID_BEGIN_FACT, MSGID_END_FACT );
    }
+   // for(int i = 0; i < sizeArrayA/sizeof( double ); i++)
+   //    cout << A->A[i] << endl;
+
+#if 1
+   memcpy(A->A, backupA, sizeArrayA);
+   Utility::replay();
+#endif
+   // for(int i = 0; i < sizeArrayA/sizeof( double ); i++)
+   //    cout << A->A[i] << endl;
 /*
  * Release panel resources and panel list
  */
    (void) HPL_pdpanel_disp( &panel[0] );
-
    if( panel ) free( panel );
+   if(backupA) free( backupA);
 /*
  * End of HPL_pdgesv0
  */

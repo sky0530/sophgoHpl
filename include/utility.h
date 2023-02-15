@@ -10,8 +10,9 @@ using namespace std;
 
 enum HplFunction
 {
-    kHplDlocmax = 0, 
-    kHplPdmxswp, 
+    kHplNone = 0,
+    kHplDlocmax,
+    kHplPdmxswp,
     kHplDlocswpN,
     kHplDscal,
     kHplDaxpy,
@@ -20,13 +21,23 @@ enum HplFunction
     kHplDlaswp00N,
     kHplDtrsm,
     kHplDgemm,
-    kHplNone
+    kHplPanelInit,
+    kHplPanelFree,
+    kHPLPdpanelFree,
+    kHPLPdpanelInit,
+    kHPLBinit,
+    kHPLBwait,
+    kEditPanel,
+    kEditPanelAfterPF,
+    kEditPanelBeforePF,
+    kProccessIpiv
 };
 
 struct FunctionParam{
     int cmdSerialNum;
     HplFunction function;
     HPL_T_panel* panelInfo;
+    HPL_T_panel initPanel;
     int m;
     int n;
     int i;
@@ -36,7 +47,8 @@ struct FunctionParam{
     double* workSpace;
     double* curA;
     double* nxtA;
-    int ipiv;
+    double* dpiv;
+    int* ipiv;
     double divNum;
 };
 
@@ -60,10 +72,22 @@ class Utility {
     static void fillAndPushDaxpy(int, double, double *, double *);
     static void fillAndPushDger(int, int, double *, double *, double *, int);
     static void fillAndPushBcast(HPL_T_panel*);
-    static void fillAndPushDlaswp00N(int, int, double *, int, const int *);
+    static void fillAndPushDlaswp00N(int, int, double *, int, int *);
     static void fillAndPushDtrsm(int, int, double *, double *, int);
     static void fillAndPushDgemm(int, int, int, double *, int, double *, int, double *);
     static void fillAndPushNone();
+    static void fillAndPushPdpanelFree(HPL_T_panel*);
+    static void fillAndPushBinit(HPL_T_panel*);
+    static void fillAndPushBwait(HPL_T_panel*);
+    static void fillAndPushEditPanel(HPL_T_panel*,double *, int);
+    static void fillAndPushEditPanelAfterPF(HPL_T_panel*, int);
+    static void fillAndPushEditPanelBeforePF(HPL_T_panel*, int);
+    static void fillAndPushProcessIpiv(int*, double*, int, int);
+    static void fillAndPushPanelInit(HPL_T_panel, HPL_T_panel*);
+    static void fillAndPushPanelFree(HPL_T_panel*);
+
+    static void replay();
+    static void printCmdNum();
 
     private:
     Utility(){};
