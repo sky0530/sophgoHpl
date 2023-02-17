@@ -4,6 +4,8 @@
 vector<std::shared_ptr<FunctionParam>> Utility::mxuCmdQueue;
 vector<std::shared_ptr<FunctionParam>> Utility::cpuCmdQueue;
 int Utility::cmdSerialNum = 0;
+int64_t Utility::opNum = 0;
+int64_t Utility::bwInBytes = 0;
 
 
 void Utility::pushToMxuCmdQ(std::shared_ptr<FunctionParam> cmd) {
@@ -307,6 +309,90 @@ void Utility::replay() {
                 std::cout << "GGWP" << std::endl;
                 break;
         }
+        calculatePerf(tmpFuncPtr);
         mxuCmdQueue.erase(mxuCmdQueue.begin());
     }
+}
+
+
+void Utility::printProfileInfo() {
+    cout << "TotalOpNum = " << opNum << endl;
+    cout << "TotalBwInBytes = " << bwInBytes << endl;
+}
+
+void Utility::calculatePerf(std::shared_ptr<FunctionParam> curFuncPtr) {
+    int remainM, remainN, nb;
+    const int kAlign64Byte = 64;//This is per transaction width
+    const int kNumByteOf1Ele = 8;
+    int modeNumN, modeNumM;
+    int totalComByteCnt = 0;
+    int totalOpNum = 0;
+    switch(curFuncPtr->function) {
+            case kHplDlocmax:
+                remainM = curFuncPtr->m * kNumByteOf1Ele;
+                modeNumM = remainM % kAlign64Byte;
+                totalComByteCnt += modeNumM ? remainM - modeNumM + 2 * kAlign64Byte : remainM;
+                totalOpNum += remainM;
+                break;
+            case kHplPdmxswp:
+                //swap 2 column w/ nb size
+                remainM = curFuncPtr->panelInfo->nb;
+                totalComByteCnt += remainM * kAlign64Byte * 4; //2Read / 2write
+                break;
+            case kHplDlocswpN:
+                //calculate in kHplPdmxswp
+                break;
+            case kHplDscal:
+                remainM = (curFuncPtr->m - 1) * kNumByteOf1Ele;
+                modeNumM = remainM % kAlign64Byte;
+                totalComByteCnt += modeNumM ? (remainM - modeNumM + 2 * kAlign64Byte) * 2 : remainM * 2;//R/W
+                totalOpNum += (curFuncPtr->m - 1);
+                break;
+            case kHplDaxpy:
+                remainM = curFuncPtr->m * kNumByteOf1Ele;
+                modeNumM = remainM % kAlign64Byte;
+                totalComByteCnt += modeNumM ? (remainM - modeNumM + 2 * kAlign64Byte) * 3 : remainM * 3; // 2R 1W
+                totalOpNum += 2 * (remainM - 1); //a * x + y
+                break;
+            case kHplDger:
+                //A = -X * Y^T + A
+                remainM = curFuncPtr->m * kNumByteOf1Ele;
+                modeNumM = remainM % kAlign64Byte;
+                remainN = curFuncPtr->n;
+                totalComByteCnt += modeNumM ? remainM - modeNumM + 2 * kAlign64Byte : remainM; //load X
+                totalComByteCnt += remainN * kAlign64Byte; //load Y
+                totalComByteCnt += modeNumM ? remainN * (remainM - modeNumM + 2 * kAlign64Byte) * 2 : remainN * remainM * 2; // 1R 1W A
+                totalOpNum += curFuncPtr->m * curFuncPtr->n * 2;
+                break;
+            case kHplDlaswp00N:
+                //Swap 2 column w/ remain n size
+                remainN = curFuncPtr->n * kAlign64Byte;
+                nb = curFuncPtr->j;
+                totalComByteCnt += remainN * nb * 4; //2Read + 2Write
+                break;
+            case kHplDtrsm:
+                //Solve upper triangle
+                remainN = curFuncPtr->n * kAlign64Byte;
+                nb = curFuncPtr->j;
+                totalComByteCnt += remainN * nb * 2; //R/W
+                totalOpNum += curFuncPtr->n * (1 + nb - 1) * (nb - 1) / 2 * 2;
+                break;
+            case kHplDgemm:
+                remainN = curFuncPtr->n * kNumByteOf1Ele;
+                remainM = curFuncPtr->m * kNumByteOf1Ele;
+                nb = curFuncPtr->j;
+                modeNumN = remainN % kAlign64Byte;
+                modeNumM = remainM % kAlign64Byte;
+                totalComByteCnt += remainM ? 2 * curFuncPtr->n * (remainM - modeNumN + 2 * kAlign64Byte) : 2 * curFuncPtr->n * remainM; //R/W update matrix
+                totalComByteCnt += remainM ? nb * (remainM - modeNumN + 2 * kAlign64Byte) : nb * remainM; //R left matrix
+                totalComByteCnt += curFuncPtr->n * kAlign64Byte;// R up matrix
+                totalOpNum += curFuncPtr->m * curFuncPtr->n * nb * 2;
+                break;
+            default:
+                // std::cout << "GGWP" << std::endl;
+                break;
+    }
+    bwInBytes += totalComByteCnt;
+    opNum += totalOpNum;
+    //2/3 n^3 + n^2
 }

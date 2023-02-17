@@ -17,7 +17,6 @@ enum HplFunction
     kHplDscal,
     kHplDaxpy,
     kHplDger,
-    kHplBcast,
     kHplDlaswp00N,
     kHplDtrsm,
     kHplDgemm,
@@ -27,6 +26,7 @@ enum HplFunction
     kHPLPdpanelInit,
     kHPLBinit,
     kHPLBwait,
+    kHplBcast,
     kEditPanel,
     kEditPanelAfterPF,
     kEditPanelBeforePF,
@@ -88,11 +88,15 @@ class Utility {
 
     static void replay();
     static void printCmdNum();
+    static void printProfileInfo();
 
     private:
     Utility(){};
     static vector<std::shared_ptr<FunctionParam>> mxuCmdQueue;
     static vector<std::shared_ptr<FunctionParam>> cpuCmdQueue;
     static int cmdSerialNum;
+    static int64_t opNum;
+    static int64_t bwInBytes;
+    static void calculatePerf(std::shared_ptr<FunctionParam>);
 };
 #endif

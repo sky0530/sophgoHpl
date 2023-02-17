@@ -191,6 +191,7 @@ void HPL_pdgesv0
 /*
  * Release panel resources and panel list
  */
+   Utility::printProfileInfo();
    (void) HPL_pdpanel_disp( &panel[0] );
    if( panel ) free( panel );
    if(backupA) free( backupA);
