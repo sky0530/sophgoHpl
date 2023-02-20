@@ -327,12 +327,18 @@ void Utility::calculatePerf(std::shared_ptr<FunctionParam> curFuncPtr) {
     int modeNumN, modeNumM;
     int totalComByteCnt = 0;
     int totalOpNum = 0;
+    // Assume column major
+    //         N
+    //  ________________
+    // |
+    // |
+    // | M
     switch(curFuncPtr->function) {
             case kHplDlocmax:
                 remainM = curFuncPtr->m * kNumByteOf1Ele;
                 modeNumM = remainM % kAlign64Byte;
                 totalComByteCnt += modeNumM ? remainM - modeNumM + 2 * kAlign64Byte : remainM;
-                totalOpNum += remainM;
+                totalOpNum += curFuncPtr->m;
                 break;
             case kHplPdmxswp:
                 //swap 2 column w/ nb size
@@ -343,7 +349,7 @@ void Utility::calculatePerf(std::shared_ptr<FunctionParam> curFuncPtr) {
                 //calculate in kHplPdmxswp
                 break;
             case kHplDscal:
-                remainM = (curFuncPtr->m - 1) * kNumByteOf1Ele;
+                remainM = curFuncPtr->m * kNumByteOf1Ele;
                 modeNumM = remainM % kAlign64Byte;
                 totalComByteCnt += modeNumM ? (remainM - modeNumM + 2 * kAlign64Byte) * 2 : remainM * 2;//R/W
                 totalOpNum += (curFuncPtr->m - 1);
@@ -352,7 +358,7 @@ void Utility::calculatePerf(std::shared_ptr<FunctionParam> curFuncPtr) {
                 remainM = curFuncPtr->m * kNumByteOf1Ele;
                 modeNumM = remainM % kAlign64Byte;
                 totalComByteCnt += modeNumM ? (remainM - modeNumM + 2 * kAlign64Byte) * 3 : remainM * 3; // 2R 1W
-                totalOpNum += 2 * (remainM - 1); //a * x + y
+                totalOpNum += 2 * curFuncPtr->m; //a * x + y
                 break;
             case kHplDger:
                 //A = -X * Y^T + A
@@ -386,7 +392,7 @@ void Utility::calculatePerf(std::shared_ptr<FunctionParam> curFuncPtr) {
                 totalComByteCnt += remainM ? 2 * curFuncPtr->n * (remainM - modeNumN + 2 * kAlign64Byte) : 2 * curFuncPtr->n * remainM; //R/W update matrix
                 totalComByteCnt += remainM ? nb * (remainM - modeNumN + 2 * kAlign64Byte) : nb * remainM; //R left matrix
                 totalComByteCnt += curFuncPtr->n * kAlign64Byte;// R up matrix
-                totalOpNum += curFuncPtr->m * curFuncPtr->n * nb * 2;
+                totalOpNum += curFuncPtr->m * curFuncPtr->n * nb * 2 + curFuncPtr->m * curFuncPtr->n;
                 break;
             default:
                 // std::cout << "GGWP" << std::endl;
