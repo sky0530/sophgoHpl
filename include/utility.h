@@ -5,6 +5,9 @@
 #include <memory>
 
 #include "hpl.h"
+#define SKIP_CALCULATION 1
+typedef __int128 int128_t;
+typedef unsigned __int128 uint128_t;
 
 using namespace std;
 
@@ -34,16 +37,16 @@ enum HplFunction
 };
 
 struct FunctionParam{
-    int cmdSerialNum;
+    int64_t cmdSerialNum;
     HplFunction function;
     HPL_T_panel* panelInfo;
     HPL_T_panel initPanel;
-    int m;
-    int n;
-    int i;
-    int j;
-    int lda;
-    int ldl2;
+    int64_t m;
+    int64_t n;
+    int64_t i;
+    int64_t j;
+    int64_t lda;
+    int64_t ldl2;
     double* workSpace;
     double* curA;
     double* nxtA;
@@ -95,8 +98,8 @@ class Utility {
     static vector<std::shared_ptr<FunctionParam>> mxuCmdQueue;
     static vector<std::shared_ptr<FunctionParam>> cpuCmdQueue;
     static int cmdSerialNum;
-    static int64_t opNum;
-    static int64_t bwInBytes;
+    static int128_t opNum;
+    static int128_t bwInBytes;
     static void calculatePerf(std::shared_ptr<FunctionParam>);
 };
 #endif

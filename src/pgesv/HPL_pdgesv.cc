@@ -48,6 +48,7 @@
  * Include files
  */
 #include "hpl.h"
+#include "utility.h"
 
 #ifdef STDC_HEADERS
 void HPL_pdgesv
@@ -109,7 +110,9 @@ void HPL_pdgesv
 /*
  * Solve upper triangular system
  */
+#if !SKIP_CALCULATION
    if( A->info == 0 ) HPL_pdtrsv( GRID, A );
+#endif
 /*
  * End of HPL_pdgesv
  */

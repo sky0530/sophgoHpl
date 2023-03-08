@@ -48,6 +48,7 @@
  * Include files
  */
 #include "hpl.h"
+#include "utility.h"
 
 #ifdef STDC_HEADERS
 void HPL_pdtest
@@ -161,6 +162,8 @@ void HPL_pdtest
 /*
  * Allocate dynamic memory
  */
+
+#if !SKIP_CALCULATION
    vptr = (void*)malloc( ( (size_t)(ALGO->align) + 
                            (size_t)(mat.ld+1) * (size_t)(mat.nq) ) *
                          sizeof(double) );
@@ -178,13 +181,17 @@ void HPL_pdtest
       if (vptr) free(vptr);
       return;
    }
+#endif
+
 /*
  * generate matrix and right-hand-side, [ A | b ] which is N by N+1.
  */
    mat.A  = (double *)HPL_PTR( vptr,
                                ((size_t)(ALGO->align) * sizeof(double) ) );
    mat.X  = Mptr( mat.A, 0, mat.nq, mat.ld );
+#if !SKIP_CALCULATION
    HPL_pdmatgen( GRID, N, N+1, NB, mat.A, mat.ld, HPL_ISEED );
+#endif
 #ifdef HPL_CALL_VSIPL
    mat.block = vsip_blockbind_d( (vsip_scalar_d *)(mat.A),
                                  (vsip_length)(mat.ld * mat.nq),
@@ -337,7 +344,9 @@ void HPL_pdtest
  * Check computation, re-generate [ A | b ], compute norm 1 and inf of A and x,
  * and norm inf of b - A x. Display residual checks.
  */
+#if !SKIP_CALCULATION
    HPL_pdmatgen( GRID, N, N+1, NB, mat.A, mat.ld, HPL_ISEED );
+
    Anorm1 = HPL_pdlange( GRID, HPL_NORM_1, N, N, NB, mat.A, mat.ld );
    AnormI = HPL_pdlange( GRID, HPL_NORM_I, N, N, NB, mat.A, mat.ld );
 /*
@@ -432,6 +441,7 @@ void HPL_pdtest
       }
    }
    if( vptr ) free( vptr );
+#endif
 /*
  * End of HPL_pdtest
  */

@@ -164,7 +164,9 @@ void HPL_pdpanrlN
 /*
  * Find local absolute value max in first column - initialize WORK[0:3]
  */
+#if !SKIP_CALCULATION
    HPL_dlocmax( PANEL, m, ii, jj, WORK );
+#endif
    Utility::fillAndPushDlocmax(PANEL, m, ii, jj, WORK);
 
    while( Nm1 >= 1 )
@@ -173,10 +175,14 @@ void HPL_pdpanrlN
 /*
  * Swap and broadcast the current row
  */
+#if !SKIP_CALCULATION
       HPL_pdmxswp(  PANEL, m, ii, jj, WORK );
+#endif
       Utility::fillAndPushPdmxswp(PANEL, m, ii, jj, WORK);
 
+#if !SKIP_CALCULATION
       HPL_dlocswpN( PANEL,    ii, jj, WORK );
+#endif
       Utility::fillAndPushDlocswpN(PANEL, ii, jj, WORK);
 /*
  * Scale current column by its absolute value max entry  -  Update trai-
@@ -184,14 +190,27 @@ void HPL_pdpanrlN
  * ly one pass through cache for each current column).  This sequence of
  * operations could benefit from a specialized blocked implementation.
  */
+
+#if !SKIP_CALCULATION
       if( WORK[0] != HPL_rzero ) {
          HPL_dscal( Mm1, HPL_rone / WORK[0], Acur, 1 );
          Utility::fillAndPushDscal(Mm1, HPL_rone / WORK[0], Acur);
       }
+#elif SKIP_CALCULATION
+      Utility::fillAndPushDscal(Mm1, 1, Acur);
+#endif
+
+#if !SKIP_CALCULATION
       HPL_daxpy( Mm1, -WORK[4+jj+1], Acur, 1, Anxt, 1 );
       Utility::fillAndPushDaxpy(Mm1, -WORK[4+jj+1], Acur, Anxt);
+#elif SKIP_CALCULATION
+      double tmp;
+      Utility::fillAndPushDaxpy(Mm1, tmp, Acur, Anxt);
+#endif
 
+#if !SKIP_CALCULATION
       HPL_dlocmax( PANEL, Mm1, iip1, jj+1, WORK );
+#endif
       Utility::fillAndPushDlocmax(PANEL, Mm1, iip1, jj+1, WORK);
 
 #ifdef HPL_CALL_VSIPL
@@ -217,8 +236,10 @@ void HPL_pdpanrlN
       }
 #else
       if( Nm1 > 1 ) {
+#if !SKIP_CALCULATION
          HPL_dger( CblasColMajor, Mm1, Nm1-1, -HPL_rone, Acur, 1,
                    WORK+4+jj+2, 1, Mptr( Anxt, 0, 1, lda ), lda );
+#endif
          Utility::fillAndPushDger(Mm1, Nm1-1, Acur, WORK+4+jj+2, Mptr( Anxt, 0, 1, lda ), lda);
       }
 #endif
@@ -237,17 +258,26 @@ void HPL_pdpanrlN
 /*
  * Swap and broadcast last row - Scale last column by its absolute value
  * max entry
- */ 
+ */
+#if !SKIP_CALCULATION
    HPL_pdmxswp(  PANEL, m, ii, jj, WORK );
+#endif
    Utility::fillAndPushPdmxswp(PANEL, m, ii, jj, WORK);
 
+#if !SKIP_CALCULATION
    HPL_dlocswpN( PANEL,    ii, jj, WORK );
+#endif
    Utility::fillAndPushDlocswpN(PANEL, ii, jj, WORK);
 
+#if !SKIP_CALCULATION
    if( WORK[0] != HPL_rzero ) {
       HPL_dscal( Mm1, HPL_rone / WORK[0], Mptr( A, iip1, jj, lda ), 1 );
       Utility::fillAndPushDscal(Mm1, HPL_rone / WORK[0], Mptr( A, iip1, jj, lda ));
    }
+#elif SKIP_CALCULATION
+      Utility::fillAndPushDscal(Mm1, 1, Mptr( A, iip1, jj, lda ));
+#endif
+
 #ifdef HPL_CALL_VSIPL
 /*
  * Release the blocks

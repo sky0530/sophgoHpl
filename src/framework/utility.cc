@@ -4,9 +4,34 @@
 vector<std::shared_ptr<FunctionParam>> Utility::mxuCmdQueue;
 vector<std::shared_ptr<FunctionParam>> Utility::cpuCmdQueue;
 int Utility::cmdSerialNum = 0;
-int64_t Utility::opNum = 0;
-int64_t Utility::bwInBytes = 0;
+int128_t Utility::opNum = 0;
+int128_t Utility::bwInBytes = 0;
 
+std::ostream&
+operator<<( std::ostream& dest, int128_t value )
+{
+    std::ostream::sentry s( dest );
+    if ( s ) {
+        __uint128_t tmp = value < 0 ? -value : value;
+        char buffer[ 128 ];
+        char* d = std::end( buffer );
+        do
+        {
+            -- d;
+            *d = "0123456789"[ tmp % 10 ];
+            tmp /= 10;
+        } while ( tmp != 0 );
+        if ( value < 0 ) {
+            -- d;
+            *d = '-';
+        }
+        int len = std::end( buffer ) - d;
+        if ( dest.rdbuf()->sputn( d, len ) != len ) {
+            dest.setstate( std::ios_base::badbit );
+        }
+    }
+    return dest;
+}
 
 void Utility::pushToMxuCmdQ(std::shared_ptr<FunctionParam> cmd) {
     mxuCmdQueue.push_back(cmd);
@@ -239,6 +264,7 @@ void Utility::replay() {
     while(mxuCmdQueue.size() != 0) {
         std::shared_ptr<FunctionParam> tmpFuncPtr = mxuCmdQueue.front();
         // std::cout << tmpFuncPtr->cmdSerialNum << std::endl;
+#if !SKIP_CALCULATION
         switch(tmpFuncPtr->function) {
             case kHplDlocmax:
                 HPL_dlocmax( tmpFuncPtr->panelInfo, tmpFuncPtr->m, tmpFuncPtr->i, tmpFuncPtr->j, tmpFuncPtr->workSpace);
@@ -309,6 +335,7 @@ void Utility::replay() {
                 std::cout << "GGWP" << std::endl;
                 break;
         }
+#endif
         calculatePerf(tmpFuncPtr);
         mxuCmdQueue.erase(mxuCmdQueue.begin());
     }
@@ -321,12 +348,12 @@ void Utility::printProfileInfo() {
 }
 
 void Utility::calculatePerf(std::shared_ptr<FunctionParam> curFuncPtr) {
-    int remainM, remainN, nb;
-    const int kAlign64Byte = 64;//This is per transaction width
-    const int kNumByteOf1Ele = 8;
-    int modeNumN, modeNumM;
-    int totalComByteCnt = 0;
-    int totalOpNum = 0;
+    int128_t remainM, remainN, nb;
+    const int128_t kAlign64Byte = 64;//This is per transaction width
+    const int128_t kNumByteOf1Ele = 8;
+    int128_t modeNumN, modeNumM;
+    int128_t totalComByteCnt = 0;
+    int128_t totalOpNum = 0;
     // Assume column major
     //         N
     //  ________________
@@ -398,6 +425,7 @@ void Utility::calculatePerf(std::shared_ptr<FunctionParam> curFuncPtr) {
                 // std::cout << "GGWP" << std::endl;
                 break;
     }
+    cout << curFuncPtr->cmdSerialNum << " " << curFuncPtr->function << " " << totalOpNum << endl;
     bwInBytes += totalComByteCnt;
     opNum += totalOpNum;
     //2/3 n^3 + n^2

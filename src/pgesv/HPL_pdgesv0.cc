@@ -121,10 +121,15 @@ void HPL_pdgesv0
 
    HPL_pdpanel_new( GRID, ALGO, N, N+1, Mmin( N, nb ), A, 0, 0, tag,
                     &panel[0] );
-
+   double* backupA = nullptr;
+#if !SKIP_CALCULATION
    int sizeArrayA = (size_t)(A->ld+1) * (size_t)(A->nq)*sizeof( double );
-   double* backupA = (double*) malloc( sizeArrayA );
+   backupA = (double*) malloc( sizeArrayA );
+   if( backupA == NULL )
+   { HPL_pabort( __LINE__, "HPL_pdgesv0", "Memory allocation failed" ); }
+
    memcpy(backupA, A->A, sizeArrayA);
+#endif
 /*
  * Loop over the columns of A
  */
@@ -161,7 +166,7 @@ void HPL_pdgesv0
  * Factor and broadcast current panel - update
  */
       HPL_pdfact(               panel[0] );
-
+#if !SKIP_CALCULATION
       (void) HPL_binit(         panel[0] );
       Utility::fillAndPushBinit(panel[0]);
       do
@@ -173,6 +178,7 @@ void HPL_pdgesv0
       while( test != HPL_SUCCESS );
       (void) HPL_bwait(         panel[0] );
       Utility::fillAndPushBwait(panel[0]);
+#endif
       HPL_pdupdate( NULL, NULL, panel[0], -1 );
 /*
  * Update message id for next factorization
@@ -183,7 +189,9 @@ void HPL_pdgesv0
    //    cout << A->A[i] << endl;
 
 #if 1
+#if !SKIP_CALCULATION
    memcpy(A->A, backupA, sizeArrayA);
+#endif
    Utility::replay();
 #endif
    // for(int i = 0; i < sizeArrayA/sizeof( double ); i++)

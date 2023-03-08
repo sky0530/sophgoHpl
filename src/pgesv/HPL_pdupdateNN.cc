@@ -140,7 +140,9 @@ void HPL_pdupdateNN
 /*
  * Enable/disable the column panel probing mechanism
  */
+#if !SKIP_CALCULATION
    (void) HPL_bcast( PBCST, &test );
+#endif
    Utility::fillAndPushBcast(PBCST);
    // test = HPL_SUCCESS;
 /*
@@ -167,7 +169,9 @@ void HPL_pdupdateNN
  */
       Lv1 = vsip_msubview_d( Lv0, 0, 0, mp, jb );
 #endif
+#if !SKIP_CALCULATION
       for( i = 0; i < jb; i++ ) { ipiv[i] = (int)(dpiv[i]) - iroff; }
+#endif
       Utility::fillAndPushProcessIpiv(ipiv, dpiv, jb, iroff);
 /*
  * So far we have not updated anything -  test availability of the panel
@@ -185,11 +189,15 @@ void HPL_pdupdateNN
          HPL_dlaswp00N( jb, nn, Aptr, lda, ipiv );
          HPL_ptimer( HPL_TIMING_LASWP );
 #else
+#if !SKIP_CALCULATION
          HPL_dlaswp00N( jb, nn, Aptr, lda, ipiv );
+#endif
          Utility::fillAndPushDlaswp00N( jb, nn, Aptr, lda, ipiv);
 #endif
+#if !SKIP_CALCULATION
          HPL_dtrsm( CblasColMajor, CblasLeft, CblasLower, CblasNoTrans,
                     CblasUnit, jb, nn, HPL_rone, L1ptr, jb, Aptr, lda );
+#endif
          Utility::fillAndPushDtrsm(jb, nn, L1ptr, Aptr, lda);
 #ifdef HPL_CALL_VSIPL
 /*
@@ -206,9 +214,11 @@ void HPL_pdupdateNN
          (void) vsip_mdestroy_d( Av1 );
          (void) vsip_mdestroy_d( Uv1 );
 #else
+#if !SKIP_CALCULATION
          HPL_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans, mp, nn,
                     jb, -HPL_rone, L2ptr, ldl2, Aptr, lda, HPL_rone,
                     Mptr( Aptr, jb, 0, lda ), lda );
+#endif
          Utility::fillAndPushDgemm(mp, nn, jb, L2ptr, ldl2, Aptr, lda, Mptr( Aptr, jb, 0, lda ));
 #endif
          Aptr = Mptr( Aptr, 0, nn, lda ); nq0 += nn; 
@@ -226,11 +236,15 @@ void HPL_pdupdateNN
          HPL_dlaswp00N( jb, nn, Aptr, lda, ipiv );
          HPL_ptimer( HPL_TIMING_LASWP );
 #else
+#if !SKIP_CALCULATION
          HPL_dlaswp00N( jb, nn, Aptr, lda, ipiv );
+#endif
          Utility::fillAndPushDlaswp00N( jb, nn, Aptr, lda, ipiv );
 #endif
+#if !SKIP_CALCULATION
          HPL_dtrsm( CblasColMajor, CblasLeft, CblasLower, CblasNoTrans,
                     CblasUnit, jb, nn, HPL_rone, L1ptr, jb, Aptr, lda );
+#endif
          Utility::fillAndPushDtrsm(jb, nn, L1ptr, Aptr, lda);
 #ifdef HPL_CALL_VSIPL
 /*
@@ -247,9 +261,11 @@ void HPL_pdupdateNN
          (void) vsip_mdestroy_d( Av1 );
          (void) vsip_mdestroy_d( Uv1 );
 #else
+#if !SKIP_CALCULATION
          HPL_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans, mp, nn,
                     jb, -HPL_rone, L2ptr, ldl2, Aptr, lda, HPL_rone,
                     Mptr( Aptr, jb, 0, lda ), lda );
+#endif
          Utility::fillAndPushDgemm(mp, nn, jb, L2ptr, ldl2, Aptr, lda, Mptr( Aptr, jb, 0, lda ));
 #endif
       }
