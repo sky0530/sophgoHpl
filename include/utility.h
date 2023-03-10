@@ -99,11 +99,11 @@ class Utility {
     static vector<std::shared_ptr<FunctionParam>> mxuCmdQueue;
     static vector<std::shared_ptr<FunctionParam>> cpuCmdQueue;
     static int cmdSerialNum;
-    static int128_t opNum;
-    static int128_t bwInBytes;
-    static int128_t totalCycle;
-    static int128_t opNumEachChip[CHIP_NUM];
-    static int128_t bwInBytesEachChip[CHIP_NUM];
+    static int64_t opNum;
+    static int64_t bwInBytes;
+    static int64_t totalCycle;
+    static int64_t opNumEachChip[CHIP_NUM];
+    static int64_t bwInBytesEachChip[CHIP_NUM];
     static void calculatePerf(std::shared_ptr<FunctionParam>);
     static string funcName(int funcId);
 };

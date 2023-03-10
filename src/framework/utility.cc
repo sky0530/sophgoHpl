@@ -4,11 +4,11 @@
 vector<std::shared_ptr<FunctionParam>> Utility::mxuCmdQueue;
 vector<std::shared_ptr<FunctionParam>> Utility::cpuCmdQueue;
 int Utility::cmdSerialNum = 0;
-int128_t Utility::opNum = 0;
-int128_t Utility::bwInBytes = 0;
-int128_t Utility::totalCycle = 0;
-int128_t Utility::opNumEachChip[CHIP_NUM] = {0};
-int128_t Utility::bwInBytesEachChip[CHIP_NUM] = {0};
+int64_t Utility::opNum = 0;
+int64_t Utility::bwInBytes = 0;
+int64_t Utility::totalCycle = 0;
+int64_t Utility::opNumEachChip[CHIP_NUM] = {0};
+int64_t Utility::bwInBytesEachChip[CHIP_NUM] = {0};
 
 std::ostream&
 operator<<( std::ostream& dest, int128_t value )
@@ -358,13 +358,13 @@ void Utility::printProfileInfo() {
 }
 
 void Utility::calculatePerf(std::shared_ptr<FunctionParam> curFuncPtr) {
-    int128_t remainM, remainN, nb;
-    const int128_t kAlign64Byte = 64;//This is per transaction width
-    const int128_t kNumByteOf1Ele = 8;
-    int128_t modeNumN, modeNumM;
-    int128_t totalComByteCnt = 0;
-    int128_t totalOpNum = 0;
-    int128_t tmpCycle = 0;
+    int64_t remainM, remainN, nb;
+    const int64_t kAlign64Byte = 64;//This is per transaction width
+    const int64_t kNumByteOf1Ele = 8;
+    int64_t modeNumN, modeNumM;
+    int64_t totalComByteCnt = 0;
+    int64_t totalOpNum = 0;
+    int64_t tmpCycle = 0;
     // Assume column major
     //         N
     //  ________________
