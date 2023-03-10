@@ -1,11 +1,14 @@
 #include "utility.h"
-
+#include <cmath>
 
 vector<std::shared_ptr<FunctionParam>> Utility::mxuCmdQueue;
 vector<std::shared_ptr<FunctionParam>> Utility::cpuCmdQueue;
 int Utility::cmdSerialNum = 0;
 int128_t Utility::opNum = 0;
 int128_t Utility::bwInBytes = 0;
+int128_t Utility::totalCycle = 0;
+int128_t Utility::opNumEachChip[CHIP_NUM] = {0};
+int128_t Utility::bwInBytesEachChip[CHIP_NUM] = {0};
 
 std::ostream&
 operator<<( std::ostream& dest, int128_t value )
@@ -345,6 +348,13 @@ void Utility::replay() {
 void Utility::printProfileInfo() {
     cout << "TotalOpNum = " << opNum << endl;
     cout << "TotalBwInBytes = " << bwInBytes << endl;
+    cout << "totalCycle = " << totalCycle << endl;
+    const double kFrequency = 2; //2GHz
+    cout << "totalTime = " << totalCycle / kFrequency  << "ns" << endl;
+    const double N = 370728;
+    const double kMxuCompPower = 295;
+    cout << "HPL Score = " << (double)2/3 * N * N * N / (totalCycle / kFrequency) * 1E-3 << endl;
+    cout << "URate = " << opNum / (kMxuCompPower * totalCycle / kFrequency) * 1E-3 << endl;
 }
 
 void Utility::calculatePerf(std::shared_ptr<FunctionParam> curFuncPtr) {
@@ -354,23 +364,38 @@ void Utility::calculatePerf(std::shared_ptr<FunctionParam> curFuncPtr) {
     int128_t modeNumN, modeNumM;
     int128_t totalComByteCnt = 0;
     int128_t totalOpNum = 0;
+    int128_t tmpCycle = 0;
     // Assume column major
     //         N
     //  ________________
-    // |
-    // |
+    // |  |
+    // | \ /
     // | M
+
+    const double kMxuCompPower = 295; //double Tops
+    const double kSimdWidth = 1024;
+    const double kFrequency = 2; //2GHz
+    const double kDdrMaxBw = 6552; //Not used yet
+    const double kDdrEffBw = 3936;
+    const double kPerCoreMxuCompPower = kMxuCompPower / CHIP_NUM;
+    const double kPerCoreMxuExePerCycle = kPerCoreMxuCompPower / kFrequency * 1024;
+    const double kInitCmdCycle = 0;
+    const double kDivCycle = 20;
+
+    tmpCycle += kInitCmdCycle;
     switch(curFuncPtr->function) {
             case kHplDlocmax:
                 remainM = curFuncPtr->m * kNumByteOf1Ele;
                 modeNumM = remainM % kAlign64Byte;
                 totalComByteCnt += modeNumM ? remainM - modeNumM + 2 * kAlign64Byte : remainM;
                 totalOpNum += curFuncPtr->m;
+                tmpCycle += std::ceil(curFuncPtr->m / kSimdWidth);
                 break;
             case kHplPdmxswp:
                 //swap 2 column w/ nb size
                 remainM = curFuncPtr->panelInfo->nb;
                 totalComByteCnt += remainM * kAlign64Byte * 4; //2Read / 2write
+                tmpCycle += remainM * 4;
                 break;
             case kHplDlocswpN:
                 //calculate in kHplPdmxswp
@@ -379,13 +404,15 @@ void Utility::calculatePerf(std::shared_ptr<FunctionParam> curFuncPtr) {
                 remainM = curFuncPtr->m * kNumByteOf1Ele;
                 modeNumM = remainM % kAlign64Byte;
                 totalComByteCnt += modeNumM ? (remainM - modeNumM + 2 * kAlign64Byte) * 2 : remainM * 2;//R/W
-                totalOpNum += (curFuncPtr->m - 1);
+                totalOpNum += curFuncPtr->m;
+                tmpCycle += std::ceil(curFuncPtr->m / kSimdWidth) * kDivCycle;
                 break;
             case kHplDaxpy:
                 remainM = curFuncPtr->m * kNumByteOf1Ele;
                 modeNumM = remainM % kAlign64Byte;
                 totalComByteCnt += modeNumM ? (remainM - modeNumM + 2 * kAlign64Byte) * 3 : remainM * 3; // 2R 1W
                 totalOpNum += 2 * curFuncPtr->m; //a * x + y
+                tmpCycle += std::ceil(curFuncPtr->m / kSimdWidth) * 2;
                 break;
             case kHplDger:
                 //A = -X * Y^T + A
@@ -396,12 +423,14 @@ void Utility::calculatePerf(std::shared_ptr<FunctionParam> curFuncPtr) {
                 totalComByteCnt += remainN * kAlign64Byte; //load Y
                 totalComByteCnt += modeNumM ? remainN * (remainM - modeNumM + 2 * kAlign64Byte) * 2 : remainN * remainM * 2; // 1R 1W A
                 totalOpNum += curFuncPtr->m * curFuncPtr->n * 2;
+                tmpCycle += std::ceil(curFuncPtr->m * curFuncPtr->n / kSimdWidth) * 2;
                 break;
             case kHplDlaswp00N:
                 //Swap 2 column w/ remain n size
                 remainN = curFuncPtr->n * kAlign64Byte;
                 nb = curFuncPtr->j;
-                totalComByteCnt += remainN * nb * 4; //2Read + 2Write
+                totalComByteCnt += remainN * 4; //2Read + 2Write
+                tmpCycle += std::ceil(curFuncPtr->n / CHIP_NUM) * 4;
                 break;
             case kHplDtrsm:
                 //Solve upper triangle
@@ -409,6 +438,7 @@ void Utility::calculatePerf(std::shared_ptr<FunctionParam> curFuncPtr) {
                 nb = curFuncPtr->j;
                 totalComByteCnt += remainN * nb * 2; //R/W
                 totalOpNum += curFuncPtr->n * (1 + nb - 1) * (nb - 1) / 2 * 2;
+                tmpCycle += std::ceil(curFuncPtr->n / CHIP_NUM / kSimdWidth) * 2 * (1 + nb - 1) * (nb - 1) / 2;
                 break;
             case kHplDgemm:
                 remainN = curFuncPtr->n * kNumByteOf1Ele;
@@ -419,14 +449,83 @@ void Utility::calculatePerf(std::shared_ptr<FunctionParam> curFuncPtr) {
                 totalComByteCnt += remainM ? 2 * curFuncPtr->n * (remainM - modeNumN + 2 * kAlign64Byte) : 2 * curFuncPtr->n * remainM; //R/W update matrix
                 totalComByteCnt += remainM ? nb * (remainM - modeNumN + 2 * kAlign64Byte) : nb * remainM; //R left matrix
                 totalComByteCnt += curFuncPtr->n * kAlign64Byte;// R up matrix
-                totalOpNum += curFuncPtr->m * curFuncPtr->n * nb * 2 + curFuncPtr->m * curFuncPtr->n;
+                totalOpNum += curFuncPtr->m * curFuncPtr->n * nb * 2; // init with A matrix
+                tmpCycle += std::ceil(curFuncPtr->n / CHIP_NUM / kSimdWidth) * kSimdWidth * nb *
+                            std::ceil(curFuncPtr->m / kSimdWidth) * kSimdWidth * 2 / kPerCoreMxuExePerCycle;
                 break;
             default:
                 // std::cout << "GGWP" << std::endl;
                 break;
     }
-    cout << curFuncPtr->cmdSerialNum << " " << curFuncPtr->function << " " << totalOpNum << endl;
+    cout << curFuncPtr->cmdSerialNum << " " << funcName(curFuncPtr->function) << " " << totalOpNum << " " << tmpCycle << endl;
     bwInBytes += totalComByteCnt;
     opNum += totalOpNum;
+    totalCycle += tmpCycle;
     //2/3 n^3 + n^2
+}
+
+
+string Utility::funcName(int funcId) {
+        switch(funcId) {
+            case kHplDlocmax:
+                return "kHplDlocmax";
+                break;
+            case kHplPdmxswp:
+                return "kHplPdmxswp";
+                break;
+            case kHplDlocswpN:
+                return "kHplDlocswpN";
+                break;
+            case kHplDscal:
+                return "kHplDscal";
+                break;
+            case kHplDaxpy:
+                return "kHplDaxpy";
+                break;
+            case kHplDger:
+                return "kHplDger";
+                break;
+            case kHplBcast:
+                return "kHplBcast";
+                break;
+            case kHplDlaswp00N:
+                return "kHplDlaswp00N";
+                break;
+            case kHplDtrsm:
+                return "kHplDtrsm";
+                break;
+            case kHplDgemm:
+                return "kHplDgemm";
+                break;
+            case kHPLBinit:
+                return "kHPLBinit";
+                break;
+            case kHPLBwait:
+                return "kHPLBwait";
+                break;
+            case kEditPanel:
+                return "kEditPanel";
+                break;
+            case kEditPanelAfterPF:
+                return "kEditPanelAfterPF";
+                break;
+            case kEditPanelBeforePF:
+                return "kEditPanelBeforePF";
+                break;
+            case kProccessIpiv:
+                return "kProccessIpiv";
+                break;
+            case kHplPanelInit:
+                return "kHplPanelInit";
+                break;
+            case kHplPanelFree:
+                return "kHplPanelFree";
+                break;
+            case kHplNone:
+                std::cout << "GGWP" << std::endl;
+                break;
+            default:
+                std::cout << "GGWP" << std::endl;
+                break;
+        }
 }

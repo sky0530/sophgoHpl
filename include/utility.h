@@ -6,6 +6,7 @@
 
 #include "hpl.h"
 #define SKIP_CALCULATION 1
+#define CHIP_NUM 10
 typedef __int128 int128_t;
 typedef unsigned __int128 uint128_t;
 
@@ -100,6 +101,10 @@ class Utility {
     static int cmdSerialNum;
     static int128_t opNum;
     static int128_t bwInBytes;
+    static int128_t totalCycle;
+    static int128_t opNumEachChip[CHIP_NUM];
+    static int128_t bwInBytesEachChip[CHIP_NUM];
     static void calculatePerf(std::shared_ptr<FunctionParam>);
+    static string funcName(int funcId);
 };
 #endif
