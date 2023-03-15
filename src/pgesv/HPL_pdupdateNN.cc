@@ -143,7 +143,7 @@ void HPL_pdupdateNN
 #if !SKIP_CALCULATION
    (void) HPL_bcast( PBCST, &test );
 #endif
-   Utility::fillAndPushBcast(PBCST);
+   Utility::fillAndPushBcast(PANEL);
    // test = HPL_SUCCESS;
 /*
  * 1 x Q case

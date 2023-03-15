@@ -7,6 +7,12 @@ int Utility::cmdSerialNum = 0;
 int64_t Utility::opNum = 0;
 int64_t Utility::bwInBytes = 0;
 int64_t Utility::totalCycle = 0;
+int64_t Utility::panelCycle = 0;
+int64_t Utility::gemmCycle = 0;
+int64_t Utility::dtrsmCycle = 0;
+int64_t Utility::bcastCycle = 0;
+int64_t Utility::swapCycle = 0;
+int64_t Utility::preMxuCycleAfterOneNbExe = 0;
 int64_t Utility::opNumEachChip[CHIP_NUM] = {0};
 int64_t Utility::bwInBytesEachChip[CHIP_NUM] = {0};
 
@@ -136,6 +142,7 @@ void Utility::fillAndPushBcast(HPL_T_panel* _panel) {
     tmpPtr->cmdSerialNum = Utility::getCmdSerialNum();
     tmpPtr->function = kHplBcast;
     tmpPtr->panelInfo = _panel;
+    tmpPtr->m = _panel->m;
     pushToMxuCmdQ(tmpPtr);
 }
 
@@ -381,6 +388,7 @@ void Utility::calculatePerf(std::shared_ptr<FunctionParam> curFuncPtr) {
     const double kPerCoreMxuExePerCycle = kPerCoreMxuCompPower / kFrequency * 1024;
     const double kInitCmdCycle = 0;
     const double kDivCycle = 20;
+    const double linkBwBytePerCycle = 2; //4GB + 2GHz = 2B/cycle
 
     tmpCycle += kInitCmdCycle;
     switch(curFuncPtr->function) {
@@ -429,8 +437,9 @@ void Utility::calculatePerf(std::shared_ptr<FunctionParam> curFuncPtr) {
                 //Swap 2 column w/ remain n size
                 remainN = curFuncPtr->n * kAlign64Byte;
                 nb = curFuncPtr->j;
-                totalComByteCnt += remainN * 4; //2Read + 2Write
-                tmpCycle += std::ceil(curFuncPtr->n / CHIP_NUM) * 4;
+                totalComByteCnt += nb * remainN * 4; //2Read + 2Write, nb times
+                tmpCycle += std::ceil(nb * curFuncPtr->n / CHIP_NUM) * 4;
+                swapCycle = tmpCycle;
                 break;
             case kHplDtrsm:
                 //Solve upper triangle
@@ -439,6 +448,7 @@ void Utility::calculatePerf(std::shared_ptr<FunctionParam> curFuncPtr) {
                 totalComByteCnt += remainN * nb * 2; //R/W
                 totalOpNum += curFuncPtr->n * (1 + nb - 1) * (nb - 1) / 2 * 2;
                 tmpCycle += std::ceil(curFuncPtr->n / CHIP_NUM / kSimdWidth) * 2 * (1 + nb - 1) * (nb - 1) / 2;
+                dtrsmCycle = tmpCycle;
                 break;
             case kHplDgemm:
                 remainN = curFuncPtr->n * kNumByteOf1Ele;
@@ -452,15 +462,36 @@ void Utility::calculatePerf(std::shared_ptr<FunctionParam> curFuncPtr) {
                 totalOpNum += curFuncPtr->m * curFuncPtr->n * nb * 2; // init with A matrix
                 tmpCycle += std::ceil(curFuncPtr->n / CHIP_NUM / kSimdWidth) * kSimdWidth * nb *
                             std::ceil(curFuncPtr->m / kSimdWidth) * kSimdWidth * 2 / kPerCoreMxuExePerCycle;
+                gemmCycle = tmpCycle;
+                break;
+            case kHplBcast:
+                totalComByteCnt = curFuncPtr->panelInfo->nb * curFuncPtr->m * kNumByteOf1Ele; //things need to be broadcast
+                tmpCycle += totalComByteCnt / linkBwBytePerCycle;
+                bcastCycle = tmpCycle;
                 break;
             default:
                 // std::cout << "GGWP" << std::endl;
                 break;
     }
-    cout << curFuncPtr->cmdSerialNum << " " << funcName(curFuncPtr->function) << " " << totalOpNum << " " << tmpCycle << endl;
+    // cout << curFuncPtr->cmdSerialNum << " " << funcName(curFuncPtr->function) << " " << totalOpNum << " " << tmpCycle << endl;
     bwInBytes += totalComByteCnt;
     opNum += totalOpNum;
-    totalCycle += tmpCycle;
+    // totalCycle += tmpCycle;
+    if(curFuncPtr->function == kHplDgemm) {
+        bool isBcastPanelCanOverlapped = (bcastCycle + panelCycle) < preMxuCycleAfterOneNbExe;
+        static int iteration = 1;
+        cout << iteration << ", " << panelCycle << ", " << bcastCycle << ", " << swapCycle << ", " << dtrsmCycle << ", " << gemmCycle << endl;
+        totalCycle += swapCycle + dtrsmCycle + gemmCycle;
+        totalCycle += isBcastPanelCanOverlapped ? 0 : panelCycle + bcastCycle;
+        int percentage = (std::ceil(curFuncPtr->n / CHIP_NUM / kSimdWidth) - 1)  / std::ceil(curFuncPtr->n / CHIP_NUM / kSimdWidth);
+        preMxuCycleAfterOneNbExe = tmpCycle * percentage;
+        panelCycle = 0;
+        iteration++;
+    } else if(curFuncPtr->function == kHplDtrsm || curFuncPtr->function == kHplDlaswp00N || curFuncPtr->function == kHplBcast) {
+        // do nothing
+    } else {
+        panelCycle += tmpCycle;
+    }
     //2/3 n^3 + n^2
 }
 

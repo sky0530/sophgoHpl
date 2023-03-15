@@ -104,6 +104,12 @@ class Utility {
     static int64_t totalCycle;
     static int64_t opNumEachChip[CHIP_NUM];
     static int64_t bwInBytesEachChip[CHIP_NUM];
+    static int64_t panelCycle;
+    static int64_t gemmCycle;
+    static int64_t dtrsmCycle;
+    static int64_t bcastCycle;
+    static int64_t swapCycle;
+    static int64_t preMxuCycleAfterOneNbExe;
     static void calculatePerf(std::shared_ptr<FunctionParam>);
     static string funcName(int funcId);
 };
