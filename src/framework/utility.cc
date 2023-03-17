@@ -482,7 +482,7 @@ void Utility::calculatePerf(std::shared_ptr<FunctionParam> curFuncPtr) {
         static int iteration = 1;
         cout << iteration << ", " << panelCycle << ", " << bcastCycle << ", " << swapCycle << ", " << dtrsmCycle << ", " << gemmCycle << endl;
         totalCycle += swapCycle + dtrsmCycle + gemmCycle;
-        totalCycle += isBcastPanelCanOverlapped ? 0 : panelCycle + bcastCycle;
+        totalCycle += isBcastPanelCanOverlapped ? 0 : panelCycle + bcastCycle - preMxuCycleAfterOneNbExe;
         double percentage = (std::ceil(curFuncPtr->n / CHIP_NUM / kSimdWidth) - 1)  / std::ceil(curFuncPtr->n / CHIP_NUM / kSimdWidth);
         preMxuCycleAfterOneNbExe = tmpCycle * percentage;
         panelCycle = 0;
